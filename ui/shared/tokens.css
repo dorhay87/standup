@@ -1,0 +1,66 @@
+/* Design tokens ported verbatim from the approved mockup (Standup.html). */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { font-family: -apple-system, "Segoe UI", system-ui, Roboto, Helvetica, Arial, sans-serif; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.stand-root {
+  --desk: #e7e9ee;
+  --win: #ffffff;
+  --surface: #f3f4f7;
+  --surface2: #e9ebf0;
+  --text: #191b20;
+  --muted: #6a7180;
+  --faint: #a2a8b4;
+  --border: #e6e8ee;
+  --border-strong: #d6d9e1;
+  --track-off: #d3d7df;
+  --accent: #0d9488;
+  --accent-fg: #ffffff;
+  --accent-soft: color-mix(in srgb, var(--accent) 13%, transparent);
+  --shadow: 0 18px 50px rgba(24,28,40,0.18), 0 2px 8px rgba(24,28,40,0.06);
+  --shadow-sm: 0 8px 24px rgba(24,28,40,0.12);
+}
+.stand-root[data-theme="dark"] {
+  --desk: #0b0c10;
+  --win: #1c1e24;
+  --surface: #26282f;
+  --surface2: #2e3138;
+  --text: #f0f2f5;
+  --muted: #99a0ad;
+  --faint: #676e7b;
+  --border: rgba(255,255,255,0.07);
+  --border-strong: rgba(255,255,255,0.13);
+  --track-off: #3a3e46;
+  --shadow: 0 24px 60px rgba(0,0,0,0.55), 0 2px 10px rgba(0,0,0,0.4);
+  --shadow-sm: 0 10px 30px rgba(0,0,0,0.45);
+}
+
+/* app logo gradient follows the accent */
+.logo-stop0 { stop-color: color-mix(in srgb, var(--accent) 82%, #000); }
+.logo-stop1 { stop-color: var(--accent); }
+
+.stand-root[data-accent="indigo"] { --accent: #4f46e5; }
+.stand-root[data-accent="violet"] { --accent: #7c3aed; }
+.stand-root[data-accent="amber"] { --accent: #d97706; }
+.stand-root[data-accent="rose"] { --accent: #e11d48; }
+
+@keyframes standToastIn {
+  from { opacity: 0; transform: translateY(14px) translateX(18px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) translateX(0) scale(1); }
+}
+@keyframes standPulse {
+  0% { box-shadow: 0 0 0 0 var(--accent-soft); }
+  70% { box-shadow: 0 0 0 7px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+input[type="time"].stand-time { font-family: inherit; }
+input[type="time"].stand-time::-webkit-calendar-picker-indicator {
+  opacity: 0.5;
+  cursor: pointer;
+}
+.stand-root[data-theme="dark"] input[type="time"].stand-time::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}

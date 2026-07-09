@@ -1,0 +1,17 @@
+{
+  "name": "standup",
+  "productName": "Standup",
+  "version": "1.1.1",
+  "description": "Stand & move reminders",
+  "author": "Dor Kova",
+  "license": "MIT",
+  "scripts": {
+    "start": "tauri dev",
+    "icons": "node tools/gen-icon.js",
+    "promo": "node tools/capture-promo.js",
+    "dist": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4"
+  }
+}

@@ -1,0 +1,14 @@
+# dependencies
+node_modules/
+
+# logs
+*.log
+npm-debug.log*
+
+# OS cruft
+Thumbs.db
+Desktop.ini
+
+# local editor/session state
+.claude/
+src-tauri/target/

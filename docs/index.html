@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Standup - stand &amp; move reminders for Windows</title>
+<meta name="description" content="A tiny Windows tray app that reminds you to stand up and move - every round hour, on your schedule. Free and open source.">
+<meta property="og:title" content="Standup - stand &amp; move reminders for Windows">
+<meta property="og:description" content="A tiny tray app that reminds you to stand up and move every round hour, on your schedule. Free and open source.">
+<meta property="og:image" content="https://dorhay87.github.io/standup/promo.png">
+<meta property="og:url" content="https://dorhay87.github.io/standup/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="icon.png">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: -apple-system, "Segoe UI", system-ui, Roboto, Helvetica, Arial, sans-serif; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .lp {
+    --bg: #e7e9ee;
+    --bg2: #edeff3;
+    --card: #ffffff;
+    --surface: #f3f4f7;
+    --text: #191b20;
+    --muted: #6a7180;
+    --faint: #9aa0ac;
+    --border: #e6e8ee;
+    --border-strong: #d6d9e1;
+    --accent: #0d9488;
+    --accent-fg: #ffffff;
+    --accent-soft: color-mix(in srgb, var(--accent) 13%, transparent);
+    --shadow: 0 22px 60px rgba(24,28,40,0.16), 0 3px 10px rgba(24,28,40,0.06);
+    --shadow-sm: 0 6px 20px rgba(24,28,40,0.10);
+    --shadow-xs: 0 2px 8px rgba(24,28,40,0.06);
+    min-height: 100vh;
+    width: 100%;
+    background: var(--bg);
+    color: var(--text);
+    transition: background .25s ease, color .25s ease;
+    overflow-x: hidden;
+  }
+  .lp[data-theme="dark"] {
+    --bg: #0b0c10;
+    --bg2: #101217;
+    --card: #1c1e24;
+    --surface: #26282f;
+    --text: #f0f2f5;
+    --muted: #99a0ad;
+    --faint: #676e7b;
+    --border: rgba(255,255,255,0.07);
+    --border-strong: rgba(255,255,255,0.13);
+    --shadow: 0 28px 70px rgba(0,0,0,0.5), 0 3px 12px rgba(0,0,0,0.4);
+    --shadow-sm: 0 8px 26px rgba(0,0,0,0.4);
+    --shadow-xs: 0 2px 10px rgba(0,0,0,0.35);
+  }
+
+  /* real app logo - gradient follows the accent */
+  .logo-stop0 { stop-color: color-mix(in srgb, var(--accent) 82%, #000); }
+  .logo-stop1 { stop-color: var(--accent); }
+  .logo { display: block; flex: none; }
+
+  @keyframes lpUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes lpToastIn {
+    from { opacity: 0; transform: translateY(10px) rotate(-1.5deg) scale(.97); }
+    to { opacity: 1; transform: translateY(0) rotate(-1.5deg) scale(1); }
+  }
+  @keyframes lpPulse {
+    0% { box-shadow: 0 0 0 0 var(--accent-soft); }
+    70% { box-shadow: 0 0 0 8px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+  }
+  .lp-anim { opacity: 0; animation: lpUp .66s cubic-bezier(.22,1,.36,1) forwards; }
+
+  .lp-card-lift { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+  .lp-card-lift:hover { transform: translateY(-3px); box-shadow: var(--shadow-sm); border-color: var(--border-strong); }
+
+  .lp-btn { transition: filter .15s ease, transform .15s ease, box-shadow .15s ease; }
+  .lp-btn:hover { filter: brightness(1.06); transform: translateY(-1px); box-shadow: var(--shadow-sm); text-decoration: none; }
+  .lp-btn:active { transform: translateY(0); }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  /* top bar */
+  .nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 24px; }
+  .nav-brand { display: flex; align-items: center; gap: 11px; }
+  .nav-brand span { font-size: 16px; font-weight: 680; letter-spacing: -.01em; }
+  .nav-links { display: flex; align-items: center; gap: 8px; }
+  .nav-links a { font-size: 13.5px; font-weight: 550; color: var(--muted); padding: 8px 12px; border-radius: 8px; }
+  .theme-btn {
+    display: flex; align-items: center; gap: 7px;
+    border: 1px solid var(--border-strong); background: var(--card); color: var(--text);
+    border-radius: 999px; padding: 7px 13px; font-size: 14px; font-weight: 550;
+    cursor: pointer; font-family: inherit; box-shadow: var(--shadow-xs);
+  }
+
+  /* hero */
+  .hero { padding-top: 40px; padding-bottom: 20px; display: flex; gap: 56px; align-items: center; flex-wrap: wrap; }
+  .hero-left { flex: 1 1 380px; min-width: 300px; }
+  .hero h1 { font-size: clamp(40px, 6vw, 60px); font-weight: 720; letter-spacing: -.03em; line-height: 1.02; margin: 26px 0 0; }
+  .tagline { font-size: clamp(17px, 2.2vw, 20px); line-height: 1.5; color: var(--muted); max-width: 34ch; margin: 18px 0 0; text-wrap: pretty; }
+  .cta-block { margin-top: 30px; display: flex; flex-direction: column; gap: 11px; align-items: flex-start; }
+  .cta {
+    display: flex; align-items: center; gap: 10px;
+    border: none; cursor: pointer; font-family: inherit;
+    font-size: 16px; font-weight: 640; padding: 15px 26px; border-radius: 13px;
+    background: var(--accent); color: var(--accent-fg); box-shadow: var(--shadow-sm);
+  }
+  .cta:hover { color: var(--accent-fg); }
+  .cta .arrow { font-size: 17px; line-height: 1; }
+  .cta-sub { font-size: 12.5px; color: var(--faint); padding-left: 2px; }
+
+  .hero-right { flex: 1 1 340px; min-width: 300px; position: relative; }
+  .mock-wrap { position: relative; padding: 14px 6px 30px; }
+  .glow { position: absolute; inset: 8% 10% 14% 10%; background: var(--accent-soft); filter: blur(46px); border-radius: 50%; }
+  .toast {
+    position: relative; background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; box-shadow: var(--shadow); padding: 17px 18px;
+    transform: rotate(-1.5deg);
+    animation: lpToastIn .7s cubic-bezier(.22,1,.36,1) both; animation-delay: .42s;
+  }
+  .toast-head { display: flex; align-items: center; gap: 8px; margin-bottom: 13px; }
+  .toast-head .src { font-size: 12px; font-weight: 600; color: var(--muted); flex: 1; }
+  .toast-head .now { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--faint); }
+  .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: lpPulse 2.2s ease-out infinite; }
+  .toast-body { display: flex; gap: 14px; }
+  .toast-title { font-size: 16px; font-weight: 680; letter-spacing: -.01em; }
+  .toast-msg { font-size: 13.5px; color: var(--muted); line-height: 1.42; margin-top: 3px; }
+  .toast-actions { display: flex; gap: 9px; margin-top: 15px; }
+  .toast-actions div { flex: 1; text-align: center; font-size: 13.5px; font-weight: 640; padding: 11px 0; border-radius: 10px; }
+  .btn-done { background: var(--accent); color: var(--accent-fg); }
+  .btn-snooze { border: 1px solid var(--border-strong); color: var(--text); }
+  .chip {
+    position: relative; margin: -6px 20px 0 auto; width: 200px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: var(--shadow-sm); padding: 13px 15px; transform: rotate(2deg);
+  }
+  .chip-label { font-size: 10px; font-weight: 650; letter-spacing: .09em; color: var(--muted); text-transform: uppercase; }
+  .chip-row { display: flex; align-items: baseline; gap: 9px; margin-top: 5px; }
+  .chip-time { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1; }
+  .chip-count { font-size: 11.5px; font-weight: 600; color: var(--accent); background: var(--accent-soft); padding: 3px 8px; border-radius: 999px; }
+
+  /* screenshot */
+  .shot-section { padding-top: 44px; padding-bottom: 20px; }
+  .shot {
+    display: block; width: 100%; aspect-ratio: 16/10; object-fit: cover; object-position: top;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; box-shadow: var(--shadow);
+  }
+
+  /* features */
+  .features-section { padding-top: 52px; padding-bottom: 30px; }
+  .features-head { text-align: center; max-width: 30ch; margin: 0 auto 34px; }
+  .features-head h2 { font-size: clamp(26px, 4vw, 34px); font-weight: 700; letter-spacing: -.02em; margin: 0; }
+  .features-head p { font-size: 15.5px; color: var(--muted); line-height: 1.5; margin: 12px 0 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px 22px; box-shadow: var(--shadow-xs); }
+  .card-icon {
+    width: 42px; height: 42px; border-radius: 12px;
+    background: var(--accent-soft); color: var(--accent);
+    display: flex; align-items: center; justify-content: center; font-size: 20px;
+  }
+  .card-title { font-size: 16.5px; font-weight: 660; letter-spacing: -.01em; margin-top: 16px; }
+  .card-body { font-size: 13.5px; color: var(--muted); line-height: 1.5; margin-top: 7px; text-wrap: pretty; }
+
+  /* download strip */
+  .strip-section { padding-top: 36px; padding-bottom: 20px; }
+  .strip {
+    background: var(--accent); border-radius: 20px; padding: 44px 32px;
+    text-align: center; box-shadow: var(--shadow-sm); position: relative; overflow: hidden;
+  }
+  .strip h2 { font-size: clamp(24px, 3.6vw, 30px); font-weight: 700; letter-spacing: -.02em; margin: 0; color: #fff; }
+  .strip p { font-size: 15px; line-height: 1.5; margin: 12px auto 24px; color: rgba(255,255,255,.86); max-width: 40ch; }
+  .strip .cta { display: inline-flex; background: #fff; color: var(--accent); box-shadow: 0 8px 26px rgba(0,0,0,.18); }
+  .strip .cta:hover { color: var(--accent); }
+  .strip .fine { font-size: 12px; color: rgba(255,255,255,.72); margin-top: 14px; }
+
+  /* footer */
+  .footer-section { padding-top: 44px; padding-bottom: 60px; }
+  .footer-inner { border-top: 1px solid var(--border); padding-top: 30px; display: flex; flex-direction: column; gap: 20px; }
+  .footer-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  .footer-brand { display: flex; align-items: center; gap: 11px; }
+  .footer-brand span { font-size: 14.5px; font-weight: 640; }
+  .footer-links { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--muted); flex-wrap: wrap; }
+  .footer-links .dot { color: var(--faint); }
+  .note {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start;
+  }
+  .note .i { color: var(--faint); font-size: 15px; line-height: 1.4; flex: none; }
+  .note p { font-size: 12.5px; color: var(--muted); line-height: 1.55; margin: 0; }
+  .note strong { color: var(--text); font-weight: 600; }
+  .footer-fine { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--faint); }
+</style>
+</head>
+<body>
+<div class="lp" id="lp" data-theme="light">
+
+  <!-- top bar -->
+  <div class="wrap nav">
+    <div class="nav-brand">
+      <svg class="logo" width="32" height="32" aria-hidden="true"><use href="#logo-badge"/></svg>
+      <span>Standup</span>
+    </div>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="https://github.com/dorhay87/standup">GitHub</a>
+      <button class="theme-btn lp-btn" id="theme-toggle" aria-label="Toggle theme"><span id="theme-icon">☾</span></button>
+    </div>
+  </div>
+
+  <!-- hero -->
+  <section class="wrap hero">
+    <div class="hero-left">
+      <svg class="logo lp-anim" width="88" height="88" style="animation-delay:.02s" aria-hidden="true"><use href="#logo-badge"/></svg>
+      <h1 class="lp-anim" style="animation-delay:.09s">Standup</h1>
+      <p class="tagline lp-anim" style="animation-delay:.16s">A tiny Windows tray app that reminds you to stand up and move - every round hour, on your schedule.</p>
+      <div class="cta-block lp-anim" style="animation-delay:.23s">
+        <a class="cta lp-btn" href="https://github.com/dorhay87/standup/releases/latest/download/Standup-x64-setup.exe"><span class="arrow">⭳</span> Download for Windows</a>
+        <span class="cta-sub">Free &amp; open source · no account · no telemetry</span>
+      </div>
+    </div>
+
+    <!-- stacked mini toast + next-reminder chip -->
+    <div class="hero-right lp-anim" style="animation-delay:.3s">
+      <div class="mock-wrap">
+        <div class="glow"></div>
+        <div class="toast">
+          <div class="toast-head">
+            <svg class="logo" width="17" height="17" aria-hidden="true"><use href="#logo-badge"/></svg>
+            <span class="src">Standup</span>
+            <span class="now"><span class="pulse-dot"></span>now</span>
+          </div>
+          <div class="toast-body">
+            <svg class="logo" width="46" height="46" aria-hidden="true"><use href="#logo-badge"/></svg>
+            <div style="flex:1;min-width:0;">
+              <div class="toast-title">Time to stand up</div>
+              <div class="toast-msg">You've been sitting a while. Take 3 minutes to stretch and move.</div>
+            </div>
+          </div>
+          <div class="toast-actions">
+            <div class="btn-done">Done</div>
+            <div class="btn-snooze">Snooze 5 min</div>
+          </div>
+        </div>
+        <div class="chip">
+          <div class="chip-label">Next reminder</div>
+          <div class="chip-row">
+            <span class="chip-time">16:00</span>
+            <span class="chip-count">in 22:41</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- product screenshot -->
+  <section class="wrap shot-section">
+    <img class="shot lp-card-lift" src="promo.png" alt="Standup - settings window, reminder toast and tray menu">
+  </section>
+
+  <!-- features -->
+  <section class="wrap features-section" id="features">
+    <div class="features-head">
+      <h2>Small on purpose</h2>
+      <p>Everything you need to build a stand-up habit. Nothing you don't.</p>
+    </div>
+    <div class="grid">
+      <div class="card lp-card-lift">
+        <div class="card-icon">⏱</div>
+        <div class="card-title">Round-hour reminders</div>
+        <div class="card-body">Nudges every 30, 45, 60, 90 or 120 minutes - aligned to the clock, so breaks land on the round hour.</div>
+      </div>
+      <div class="card lp-card-lift">
+        <div class="card-icon">📅</div>
+        <div class="card-title">Your schedule</div>
+        <div class="card-body">Only during the active hours and on the days you define. Quiet on evenings and weekends unless you say otherwise.</div>
+      </div>
+      <div class="card lp-card-lift">
+        <div class="card-icon">🔔</div>
+        <div class="card-title">Six gentle sounds</div>
+        <div class="card-body">Chime, Bell, Marimba, Soft Pop, Glass, Droplet - all synthesized and calm. Preview before you pick.</div>
+      </div>
+      <div class="card lp-card-lift">
+        <div class="card-icon">🪶</div>
+        <div class="card-title">Never in your way</div>
+        <div class="card-body">A quiet corner toast that never steals focus. Done when you've moved, or Snooze 5 min when you're mid-thought.</div>
+      </div>
+      <div class="card lp-card-lift">
+        <div class="card-icon">🎨</div>
+        <div class="card-title">Make it yours</div>
+        <div class="card-body">Light and dark mode plus five accent colors - even the tray icon recolors to match.</div>
+      </div>
+      <div class="card lp-card-lift">
+        <div class="card-icon">⚡</div>
+        <div class="card-title">Starts with Windows</div>
+        <div class="card-body">Optional launch on startup, minimized straight to the tray. Set it once and forget it's running.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- download strip -->
+  <section class="wrap strip-section">
+    <div class="strip">
+      <h2>Get up. It's easy.</h2>
+      <p>Download once, set your hours, forget it's there - until it gently taps you on the shoulder.</p>
+      <a class="cta lp-btn" href="https://github.com/dorhay87/standup/releases/latest/download/Standup-x64-setup.exe"><span class="arrow">⭳</span> Download for Windows</a>
+      <div class="fine">Windows 10 &amp; 11 · ~1 MB · Free &amp; open source</div>
+    </div>
+  </section>
+
+  <!-- footer -->
+  <footer class="wrap footer-section">
+    <div class="footer-inner">
+      <div class="footer-row">
+        <div class="footer-brand">
+          <svg class="logo" width="28" height="28" aria-hidden="true"><use href="#logo-badge"/></svg>
+          <span>Standup</span>
+        </div>
+        <div class="footer-links">
+          <a href="https://github.com/dorhay87/standup">Source on GitHub</a>
+          <span class="dot">·</span>
+          <span>MIT license</span>
+        </div>
+      </div>
+      <div class="note">
+        <span class="i">ⓘ</span>
+        <p>The installer isn't code-signed, so Windows SmartScreen may show a warning the first time you run it. Click <strong>More info → Run anyway</strong> to continue. The full source is on GitHub if you'd rather build it yourself.</p>
+      </div>
+      <div class="footer-fine">
+        <span>Built by <a href="https://github.com/dorhay87">Dor Hay</a> · open source</span>
+        <span>© 2026 Standup</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- real app logo (accent-aware gradient badge) -->
+  <svg width="0" height="0" aria-hidden="true">
+    <defs>
+      <linearGradient id="logoGrad" x1="0" y1="1" x2="0" y2="0">
+        <stop class="logo-stop0" offset="0"/>
+        <stop class="logo-stop1" offset="1"/>
+      </linearGradient>
+      <symbol id="logo-badge" viewBox="55 384 1268 1292">
+        <path fill="url(#logoGrad)" d="M 407.576 390.436 C 408.636 390.391 409.696 390.351 410.756 390.317 C 444.397 389.245 481.948 389.954 515.988 389.869 L 721.237 389.753 L 868.507 390.002 C 936.903 390.24 1010.9 391.045 1077.91 406.538 C 1125.31 418.283 1170.11 442.852 1206.43 475.056 C 1331.65 586.105 1318.1 770.33 1318.35 922.956 L 1318.93 1079.57 C 1318.8 1189.16 1322.31 1314.11 1300.35 1421.68 C 1267.64 1581.9 1129.66 1663.5 973.023 1668.07 C 944.783 1670.01 910.93 1670.07 882.626 1670.47 C 820.886 1671.08 759.143 1671.25 697.4 1670.99 L 537.657 1670.37 C 457.696 1670 379.886 1669.71 301.068 1653.49 C 254.11 1643.84 209.584 1624 173.105 1592.56 C 56.3206 1491.91 61.2225 1344.06 60.6492 1203.38 L 60.2357 1018 L 60.4084 842.116 C 60.7554 777.757 61.8161 722.274 71.4096 658.998 C 93.994 510.037 204.986 408.52 354.179 394.571 C 371.577 392.944 389.787 391.753 407.576 390.436 z"/>
+        <path fill="rgb(251,252,252)" d="M 563.019 1019.06 C 529.724 998.173 497.333 1002.85 460.171 1009.17 C 414.972 1016.85 369.603 1022.09 324.561 1029.98 C 315.204 1031.7 304.986 1036.27 295.564 1034.46 L 293.883 1033.09 C 294.385 1025.17 325.2 1013.34 333.381 1009.37 L 424.803 965.061 L 814.618 777.798 L 1010.44 683.173 C 1020.9 678.149 1075.74 649.22 1082.29 649.119 L 1083.61 650.212 C 1083.25 655.354 1070.58 665.423 1066.5 668.974 C 988.304 736.931 852.078 846.554 810.56 938.76 C 798.34 965.899 792.454 999.534 790.355 1029.05 C 788.849 1050.21 788.235 1072.25 790.819 1093.34 C 792.736 1108.99 796.002 1124.48 798.535 1140.03 C 809.104 1204.93 822.527 1269.15 835.794 1333.54 C 841.556 1361.5 845.651 1389.64 851.088 1417.61 C 855.048 1437.99 860.142 1458.25 863.511 1478.73 C 864.268 1483.33 866.751 1492.18 864.522 1496.19 C 855.581 1497.4 846.714 1469.39 842.048 1462.14 C 823.75 1433.69 807.254 1404.14 791.032 1374.49 C 782.18 1358.31 771.925 1342.65 762.932 1326.41 L 718.857 1246.73 C 707.003 1225.06 700.963 1211.43 686.972 1189.34 C 685.279 1182.74 674.137 1165.33 670.182 1158.15 C 649.565 1120.75 608.076 1027.68 563.019 1019.06 z"/>
+        <path fill="rgb(251,252,252)" d="M 563.019 1019.06 C 608.076 1027.68 649.565 1120.75 670.182 1158.15 C 674.137 1165.33 685.279 1182.74 686.972 1189.34 C 677.595 1200.12 670.598 1209.86 662.594 1221.61 C 658.748 1227.25 649.825 1240.72 645.39 1245.1 C 641.833 1250.99 630.788 1263.94 626.074 1270.15 L 582.135 1328.07 L 488.823 1451.38 C 481.922 1460.44 460.806 1492.81 452.313 1496.67 L 450.68 1495.76 C 447.297 1488.28 470.316 1432.54 474.538 1420.1 L 532.413 1250.4 C 548.275 1204.61 566.663 1161.48 575.029 1113.44 C 580.045 1082.81 584.251 1045.01 563.019 1019.06 z"/>
+        <path fill="rgb(190,205,211)" d="M 563.019 1019.06 C 608.076 1027.68 649.565 1120.75 670.182 1158.15 C 674.137 1165.33 685.279 1182.74 686.972 1189.34 C 677.595 1200.12 670.598 1209.86 662.594 1221.61 C 658.748 1227.25 649.825 1240.72 645.39 1245.1 C 646.674 1236.65 653.201 1233.16 656.136 1225.8 C 657.305 1222.87 650.753 1217.66 650.241 1213.56 C 648.563 1200.12 648.209 1187.95 644.676 1174.68 C 641.265 1161.87 633.794 1152.16 627.7 1140.67 C 624.544 1134.72 621.815 1126.86 618.555 1120.96 C 606.333 1098.83 606.366 1093.23 581.816 1084.73 C 580.966 1091.95 579.795 1108.94 575.029 1113.44 C 580.045 1082.81 584.251 1045.01 563.019 1019.06 z"/>
+        <path fill="rgb(251,252,252)" d="M 670.117 601.142 C 722.31 598.505 766.683 638.842 769.019 691.05 C 771.354 743.258 730.761 787.397 678.54 789.43 C 626.745 791.447 583.044 751.256 580.728 699.474 C 578.411 647.691 618.349 603.759 670.117 601.142 z"/>
+      </symbol>
+    </defs>
+  </svg>
+
+</div>
+<script>
+  var lp = document.getElementById('lp');
+  var icon = document.getElementById('theme-icon');
+  var mq = window.matchMedia('(prefers-color-scheme: dark)');
+  var userSet = false;
+  function apply(dark) {
+    lp.dataset.theme = dark ? 'dark' : 'light';
+    icon.textContent = dark ? '☼' : '☾';
+  }
+  apply(mq.matches);
+  mq.addEventListener('change', function (e) { if (!userSet) apply(e.matches); });
+  document.getElementById('theme-toggle').addEventListener('click', function () {
+    userSet = true;
+    apply(lp.dataset.theme !== 'dark');
+  });
+</script>
+</body>
+</html>
